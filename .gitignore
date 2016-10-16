@@ -1,0 +1,7 @@
+src/.deps
+Makefile
+config.log
+config.status
+src/Makefile
+src/karmen
+src/karmen-*.o

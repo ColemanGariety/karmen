@@ -103,6 +103,7 @@ static void repaint(struct widget *widget)
 			for (y = ypad + off;
 			     y < WIDGET_HEIGHT(title) - 1 - ypad + off;
 			     y++) {
+        y++; // Draw half as many lines
 				XSetForeground(display, title->gc,
 				    m ? bg->shadow2 : bg->bright2);
 				XDrawLine(display, title->pixmap, title->gc,

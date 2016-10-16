@@ -500,6 +500,8 @@ static void handlekey(XKeyEvent *ep)
 	case XK_Meta_R:
 	case XK_Alt_L:
 	case XK_Alt_R:
+	case XK_Super_L:
+	case XK_Super_R:
 		if (ep->type == KeyRelease) {
 			/* end window cycling */
 			if (cycling) {

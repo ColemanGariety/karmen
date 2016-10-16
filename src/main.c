@@ -459,8 +459,8 @@ static void init(int *argcp, char *argv[])
 	grabkey(display, XKeysymToKeycode(display, XK_Tab),
 	    ShiftMask | Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
 
-	grabkey(display, XKeysymToKeycode(display, XK_Return),
-	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	/* grabkey(display, XKeysymToKeycode(display, XK_Return), */
+	/*     Mod4Mask, root, True, GrabModeAsync, GrabModeAsync); */
 
 	grabkey(display, XKeysymToKeycode(display, XK_space),
 	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
@@ -543,14 +543,19 @@ static void handlekey(XKeyEvent *ep)
 			REPAINT(winmenu);
 		}
 		break;
-	case XK_Return:
+  // maximize with space key
+	case XK_space:
 		if (ep->type == KeyPress && active != NULL)
 			maximize_window(active);
 		break;
-	case XK_space:
-		if (ep->type == KeyPress && active != NULL)
-			toggle_window_ontop(active);
-		break;
+	/* case XK_Return: */
+	/* 	if (ep->type == KeyPress && active != NULL) */
+	/* 		maximize_window(active); */
+	/* 	break; */
+	/* case XK_space: */
+	/* 	if (ep->type == KeyPress && active != NULL) */
+	/* 		toggle_window_ontop(active); */
+	/* 	break; */
 	case XK_Escape:
 		if (cycling) {
 			cycling = 0;

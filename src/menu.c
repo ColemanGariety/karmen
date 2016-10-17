@@ -107,7 +107,7 @@ static void repaint(struct widget *widget)
 		ip = LIST_ITEM(lp, struct menuitem, itemlink);
 		if (i == menu->current) {
 			XSetForeground(display, menu->gc,
-			    color_menu_selection_bg.shadow2);
+			    color_menu_selection_fg.normal);
 			XDrawLine(display, menu->pixmap, menu->gc,
 			    1,
 			    1 + ITEMPAD + i * ITEMHEIGHT,

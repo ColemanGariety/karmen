@@ -455,23 +455,23 @@ static void init(int *argcp, char *argv[])
 	    KeyPressMask | KeyReleaseMask);
 
 	grabkey(display, XKeysymToKeycode(display, XK_Tab),
-	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 	grabkey(display, XKeysymToKeycode(display, XK_Tab),
-	    ShiftMask | Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    ShiftMask | Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 
 	/* grabkey(display, XKeysymToKeycode(display, XK_Return), */
-	/*     Mod4Mask, root, True, GrabModeAsync, GrabModeAsync); */
+	/*     Mod1Mask, root, True, GrabModeAsync, GrabModeAsync); */
 
 	grabkey(display, XKeysymToKeycode(display, XK_space),
-	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 
 	grabkey(display, XKeysymToKeycode(display, XK_Escape),
-	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 
 	grabkey(display, XKeysymToKeycode(display, XK_BackSpace),
-	    Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 	grabkey(display, XKeysymToKeycode(display, XK_BackSpace),
-	    ShiftMask | Mod4Mask, root, True, GrabModeAsync, GrabModeAsync);
+	    ShiftMask | Mod1Mask, root, True, GrabModeAsync, GrabModeAsync);
 
 	loadfont();
 

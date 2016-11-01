@@ -613,7 +613,7 @@ static void windowevent(struct widget *widget, XEvent *ep)
 	switch (ep->type) {
 	case ButtonPress:
 		set_active_window(win);
-		if (ep->xbutton.state & Mod4Mask) {
+		if (ep->xbutton.state & Mod1Mask) {
 			win->altmove.xoff = ep->xbutton.x;
 			win->altmove.yoff = ep->xbutton.y;
 			win->altmove.moving = 1;
@@ -917,11 +917,11 @@ struct window *manage_window(Window client, int wmstart)
 
 	save_widget_context(&win->widget, client);
 
-	grabbutton(display, Button1, Mod4Mask,
+	grabbutton(display, Button1, Mod1Mask,
 	    WIDGET_XWINDOW(win), False,
 	    ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
 	    GrabModeAsync, GrabModeAsync, None, movecurs);
-	grabbutton(display, Button1, Mod4Mask | ControlMask,
+	grabbutton(display, Button1, Mod1Mask | ControlMask,
 	    WIDGET_XWINDOW(win), False,
 	    ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
 	    GrabModeAsync, GrabModeAsync, None, movecurs);

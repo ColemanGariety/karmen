@@ -120,13 +120,13 @@ static void repaint(struct widget *widget)
 			    1 + ITEMPAD + i * ITEMHEIGHT + ITEMHEIGHT - 1);
 
 			XSetForeground(display, menu->gc,
-			    color_menu_selection_bg.normal);
+			    color_menu_selection_fg.normal);
 			XFillRectangle(display, menu->pixmap, menu->gc,
 			    1, 1 + ITEMPAD + i * ITEMHEIGHT + 1,
 			    WIDGET_WIDTH(menu) - 2, ITEMHEIGHT - 2);
 
 			XSetForeground(display, menu->gc,
-			    color_menu_selection_fg.normal);
+			    color_menu_selection_bg.normal);
 		} else
 			XSetForeground(display, menu->gc,
 			    color_menu_fg.normal);

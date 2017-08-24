@@ -301,7 +301,7 @@ static void mkcolor(struct color *color, const char *name)
 	XAllocColor(display, DefaultColormap(display, screen), &sc);
 	color->shadow1 = sc.pixel;
 
-	scalecolor(&sc, &tc, -.25);
+	scalecolor(&sc, &tc, -.33);
 	XAllocColor(display, DefaultColormap(display, screen), &sc);
 	color->shadow2 = sc.pixel;
 

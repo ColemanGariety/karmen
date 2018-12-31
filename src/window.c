@@ -803,9 +803,9 @@ void maximize_window(struct window *win)
 		    DisplayWidth(display, screen),
 		    DisplayHeight(display, screen),
 		    &rwidth, &rheight, NULL, NULL);
-		x = (DisplayWidth(display, screen) - rwidth) / 2;
-		y = (DisplayHeight(display, screen) - rheight) / 2;
-		moveresize_window(win, x, y, rwidth, rheight);
+		x = ((DisplayWidth(display, screen) - rwidth) / 2) - border_width;
+		y = ((DisplayHeight(display, screen) - rheight) / 2) - WIDGET_HEIGHT(win->title) - 2 - title_pad;
+		moveresize_window(win, x, y, rwidth + (border_width * 2), rheight + (WIDGET_HEIGHT(win->title) + title_pad + 4));
 		win->maximized = 1;
 	}
 }

@@ -74,6 +74,8 @@ struct window { struct widget widget;
 
 	LIST *layer;
 	LIST layerlink;
+
+  Bool undecorated;
 };
 
 void window_init(void);

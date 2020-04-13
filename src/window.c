@@ -4,7 +4,7 @@
 
 /*
  * Copyright 2006-2007 Johan Veenhuizen
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -50,6 +50,8 @@
 struct window *active = NULL;
 
 static Atom WM_STATE;
+static Atom NET_WM_WINDOW_TYPE;
+static Atom NET_WM_WINDOW_TYPE_DOCK;
 
 static Window front;
 
@@ -74,6 +76,19 @@ static struct window *topmost_window(void);
 static void fitwin(struct window *);
 static void smartpos(int, int, int *, int *);
 static void make_window_visible(struct window *);
+
+typedef struct {
+	long flags;
+	long functions;
+	long decorations;
+	long inputmode;
+	long status;
+} mwmhints;
+
+static Atom MOTIF_WM_HINTS;
+
+#define MWM_DECOR_TITLE (1L << 3)
+#define MWM_HINTS_DECORATIONS (1L << 1)
 
 static int ismapped(Window client)
 {
@@ -101,6 +116,9 @@ void window_init(void)
 	movecurs = XCreateFontCursor(display, XC_fleur);
 
 	WM_STATE = XInternAtom(display, "WM_STATE", False);
+	NET_WM_WINDOW_TYPE = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+	NET_WM_WINDOW_TYPE_DOCK = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	MOTIF_WM_HINTS = XInternAtom(display, "_MOTIF_WM_HINTS", False);
 
 	if (XQueryTree(display, root, &d1, &d2, &winlist, &n)) {
 		for (i = 0; i < n; i++)
@@ -357,6 +375,34 @@ static int getwmstate(Window xwindow, long *statp)
 	return rval;
 }
 
+void *getprop(Window xwindow, Atom prop, Atom type, int fmt, unsigned long *rcountp)
+{
+  void *ptr = NULL;
+  unsigned long count = 32;
+	Atom rtype;
+  int rfmt;
+  unsigned long rafter;
+
+  for (;;) {
+    if (XGetWindowProperty(display, xwindow, prop, 0L, count,
+        False, type, &rtype, &rfmt, rcountp,
+        &rafter, (unsigned char **)&ptr) != Success) {
+      // Error
+      return NULL;
+    } else if (rtype != type || rfmt != fmt) {
+      // Does not exist (type=None), or wrong type/format
+      return NULL;
+    } else if (rafter > 0) {
+      XFree(ptr);
+      ptr = NULL;
+      count *= 2;
+    } else {
+      return ptr;
+    }
+  }
+}
+
+
 static void client_to_window_geom(XWindowAttributes *attr, XSizeHints *sz,
     int *x, int *y, int *width, int *height)
 {
@@ -575,35 +621,37 @@ static void prepare_repaint(struct widget *widget)
 static void repaint(struct widget *widget)
 {
 	struct window *win = (struct window *)widget;
-	GC gc = win->title->gc;
-	struct color *color =
-	    window_family_is_active(win) ?
-	    &color_title_active_bg : &color_title_inactive_bg;
-	int w = WIDGET_WIDTH(win);
-	int h = WIDGET_HEIGHT(win);
-	int bw = border_width;
+  if (!win->undecorated) {
+    GC gc = win->title->gc;
+    struct color *color =
+      window_family_is_active(win) ?
+      &color_title_active_bg : &color_title_inactive_bg;
+    int w = WIDGET_WIDTH(win);
+    int h = WIDGET_HEIGHT(win);
+    int bw = border_width;
 
-	drawraised(WIDGET_XWINDOW(win), gc, color,
-	    0, 0, WIDGET_WIDTH(win), WIDGET_HEIGHT(win));
-	drawlowered(WIDGET_XWINDOW(win), gc, color,
-	    border_width - 2, border_width - 2,
-	    WIDGET_WIDTH(win) - 2 * border_width + 3,
-	    WIDGET_HEIGHT(win) - 2 * border_width + 3);
+    drawraised(WIDGET_XWINDOW(win), gc, color,
+               0, 0, WIDGET_WIDTH(win), WIDGET_HEIGHT(win));
+    drawlowered(WIDGET_XWINDOW(win), gc, color,
+                border_width - 2, border_width - 2,
+                WIDGET_WIDTH(win) - 2 * border_width + 3,
+                WIDGET_HEIGHT(win) - 2 * border_width + 3);
 
-	XSetForeground(display, gc, color->normal);
+    XSetForeground(display, gc, color->normal);
 
-	XFillRectangle(display, WIDGET_XWINDOW(win), gc,
-	    1, 1, w - 3, bw - 3);
-	XFillRectangle(display, WIDGET_XWINDOW(win), gc,
-	    1, h - bw + 1, w - 3, bw - 3);
-	XFillRectangle(display, WIDGET_XWINDOW(win), gc,
-	    1, bw - 2, bw - 3, h - 2 * bw + 3);
-	XFillRectangle(display, WIDGET_XWINDOW(win), gc,
-	    w - bw + 1, bw - 2, bw - 3, h - 2 * bw + 3);
+    XFillRectangle(display, WIDGET_XWINDOW(win), gc,
+                   1, 1, w - 3, bw - 3);
+    XFillRectangle(display, WIDGET_XWINDOW(win), gc,
+                   1, h - bw + 1, w - 3, bw - 3);
+    XFillRectangle(display, WIDGET_XWINDOW(win), gc,
+                   1, bw - 2, bw - 3, h - 2 * bw + 3);
+    XFillRectangle(display, WIDGET_XWINDOW(win), gc,
+                   w - bw + 1, bw - 2, bw - 3, h - 2 * bw + 3);
 
-	/* Also paint behind client window in case it is shaped. */
-	XFillRectangle(display, WIDGET_XWINDOW(win), gc,
-	    bw, bw + button_size, w - 2 * bw, h - 2 * bw - button_size);
+    /* Also paint behind client window in case it is shaped. */
+    XFillRectangle(display, WIDGET_XWINDOW(win), gc,
+                   bw, bw + button_size, w - 2 * bw, h - 2 * bw - button_size);
+  }
 }
 
 static void windowevent(struct widget *widget, XEvent *ep)
@@ -791,7 +839,7 @@ static void setgrav(Window xwin, int grav)
 
 void maximize_window(struct window *win)
 {
-	int x, y, rwidth, rheight;
+	int x, y, rwidth, rheight, title_height;
 
 	if (win->maximized) {
 		moveresize_window(win, win->odim.x, win->odim.y,
@@ -803,9 +851,16 @@ void maximize_window(struct window *win)
 		    DisplayWidth(display, screen),
 		    DisplayHeight(display, screen),
 		    &rwidth, &rheight, NULL, NULL);
-		x = ((DisplayWidth(display, screen) - rwidth) / 2) - border_width;
-		y = ((DisplayHeight(display, screen) - rheight) / 2) - WIDGET_HEIGHT(win->title) - 2 - title_pad;
-		moveresize_window(win, x, y, rwidth + (border_width * 2), rheight + (WIDGET_HEIGHT(win->title) + title_pad + 4));
+
+    if (win->undecorated) {
+      moveresize_window(win, 0, 0, DisplayWidth(display, screen) + 8, DisplayHeight(display, screen));
+    } else {
+      x = 0 - (border_width * 2) + 4;
+      y = 0 - WIDGET_HEIGHT(win->title) - border_width + 1;
+      moveresize_window(win, x, y, DisplayWidth(display, screen) + 8, DisplayHeight(display, screen) + WIDGET_HEIGHT(win->title) + 8);
+    }
+		// x = ((DisplayWidth(display, screen) - rwidth) / 2) - border_width;
+		// y = ((DisplayHeight(display, screen) - rheight) / 2) - WIDGET_HEIGHT(win->title) - 2 - title_pad;
 		win->maximized = 1;
 	}
 }
@@ -905,7 +960,40 @@ struct window *manage_window(Window client, int wmstart)
 	win->odim.width = attr.width;
 	win->odim.height = attr.height;
 	win->layer = &normallayer;
+  win->undecorated = False;
 	LIST_INIT(&win->layerlink);
+
+  /*
+   * Check if undecorated
+   */
+
+  unsigned long n = 0;
+  Atom *types = getprop(client, NET_WM_WINDOW_TYPE, XA_ATOM, 32, &n);
+  if (types != NULL) {
+    for (unsigned long i = 0; i < n; i++) {
+      if (types[i] == NET_WM_WINDOW_TYPE_DOCK) {
+        win->undecorated = True;
+      }
+    }
+    XFree(types);
+  }
+
+  // NOTE: this breaks chrome !!!
+  
+  /* unsigned long o = 0; */
+  /* mwmhints *h = getprop(client, MOTIF_WM_HINTS, */
+  /*                       MOTIF_WM_HINTS, 32, &o); */
+  /* if (h != NULL & o != 5) { */
+  /*   XFree(h); */
+  /*   h = NULL; */
+  /* } */
+  /* if (h != NULL) { */
+  /*   if (h->flags & MWM_HINTS_DECORATIONS) { */
+	/* 		if ((h->decorations & MWM_DECOR_TITLE) == 0) */
+	/* 			win->undecorated = True; */
+	/* 	} */
+	/* 	XFree(h); */
+  /* } */
 
 	/*
 	 * Everything initialized. Time to get some work done.
@@ -926,44 +1014,47 @@ struct window *manage_window(Window client, int wmstart)
 	    ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
 	    GrabModeAsync, GrabModeAsync, None, movecurs);
 
-	XSelectInput(display, WIDGET_XWINDOW(win),
-	    ExposureMask | SubstructureRedirectMask | SubstructureNotifyMask);
+  XSelectInput(display, WIDGET_XWINDOW(win),
+               ExposureMask | SubstructureRedirectMask | SubstructureNotifyMask);
 
-	win->widget.event = windowevent;
-	win->widget.prepare_repaint = prepare_repaint;
-	win->widget.repaint = repaint;
+  win->widget.event = windowevent;
+  win->widget.prepare_repaint = prepare_repaint;
+  win->widget.repaint = repaint;
 
-	win->deletebtn = create_button(win,
-	    width - border_width - button_size,
-	    border_width, button_size, button_size);
-	setgrav(WIDGET_XWINDOW(win->deletebtn), NorthEastGravity);
-	set_button_image(win->deletebtn, &delete_image);
-	set_button_handler(win->deletebtn, delete_window);
+  if (!win->undecorated) {
+    win->deletebtn = create_button(win,
+                                   width - border_width - button_size,
+                                   border_width, button_size, button_size);
+    setgrav(WIDGET_XWINDOW(win->deletebtn), NorthEastGravity);
+    set_button_image(win->deletebtn, &delete_image);
+    set_button_handler(win->deletebtn, delete_window);
 
-	win->unmapbtn = create_button(win,
-	    width - border_width - 2 * button_size,
-	    border_width, button_size, button_size);
-	setgrav(WIDGET_XWINDOW(win->unmapbtn), NorthEastGravity);
-	set_button_image(win->unmapbtn, &unmap_image);
-	set_button_handler(win->unmapbtn, user_unmap_window);
+    win->unmapbtn = create_button(win,
+                                  width - border_width - 2 * button_size,
+                                  border_width, button_size, button_size);
+    setgrav(WIDGET_XWINDOW(win->unmapbtn), NorthEastGravity);
+    set_button_image(win->unmapbtn, &unmap_image);
+    set_button_handler(win->unmapbtn, user_unmap_window);
 
-	win->title = create_title(win,
-	    border_width, border_width,
-	    width - 2 * border_width - NBTN * button_size, button_size);
+    win->title = create_title(win,
+                              border_width, border_width,
+                              width - 2 * border_width - NBTN * button_size, button_size);
+  }
 
-	clerr();
-	XAddToSaveSet(display, client);
-	XSetWindowBorderWidth(display, client, 0);
-	XReparentWindow(display, client, WIDGET_XWINDOW(win),
-	    border_width, border_width + button_size);
-	XLowerWindow(display, client);
-	XSelectInput(display, client, PropertyChangeMask);
-	setgrav(client, NorthWestGravity);
-	grabbutton(display, AnyButton, 0, client, True,
-	    ButtonPressMask, GrabModeSync, GrabModeSync, None, None);
-	sterr();
+  clerr();
+  XAddToSaveSet(display, client);
+  XSetWindowBorderWidth(display, client, 0);
+  XReparentWindow(display, client, WIDGET_XWINDOW(win),
+                  border_width, border_width + button_size);
+  XLowerWindow(display, client);
+  XSelectInput(display, client, PropertyChangeMask);
 
-	win->rsz_northwest = create_resizer(win, NORTHWEST);
+  setgrav(client, NorthWestGravity);
+  grabbutton(display, AnyButton, 0, client, True,
+             ButtonPressMask, GrabModeSync, GrabModeSync, None, None);
+  sterr();
+
+  win->rsz_northwest = create_resizer(win, NORTHWEST);
 	win->rsz_north = create_resizer(win, NORTH);
 	win->rsz_northeast = create_resizer(win, NORTHEAST);
 	win->rsz_west = create_resizer(win, WEST);
@@ -1013,6 +1104,13 @@ struct window *manage_window(Window client, int wmstart)
 		return NULL;
 	}
 	sterr();
+
+  // NOTE: not the right way to do this
+
+  if (win->undecorated) {
+    put_window_group_below(win);
+    unmanage_window(win, 0);
+  }
 
 	return win;
 }
@@ -1115,7 +1213,9 @@ void fetch_window_name(struct window *win)
 	clerr();
 	XFetchName(display, win->client, &win->name);
 	sterr();
-	REPAINT(win->title);
+  if (!win->undecorated) {
+    REPAINT(win->title);
+  }
 }
 
 void fetch_icon_name(struct window *win)
@@ -1169,25 +1269,29 @@ static void fitwin(struct window *win)
 {
 	int nbtn = 0;
 
-	if (win->wmtransientfor == None
-	    && WIDGET_WIDTH(win) >= 2 * border_width + 2 * button_size + 1) {
-		map_widget((struct widget *)win->unmapbtn);
-	} else
-		unmap_widget((struct widget *)win->unmapbtn);
+  if (!win->undecorated) {
+    if (win->wmtransientfor == None
+        && WIDGET_WIDTH(win) >= 2 * border_width + 2 * button_size + 1) {
+      map_widget((struct widget *)win->unmapbtn);
+    } else {
+      unmap_widget((struct widget *)win->unmapbtn);
+    }
 
-	if (WIDGET_WIDTH(win) >= 2 * border_width + button_size + 1)
-		map_widget((struct widget *)win->deletebtn);
-	else
-		unmap_widget((struct widget *)win->deletebtn);
+    if (WIDGET_WIDTH(win) >= 2 * border_width + button_size + 1)
+      map_widget((struct widget *)win->deletebtn);
+    else
+      unmap_widget((struct widget *)win->deletebtn);
 
-	if (WIDGET_MAPPED(win->deletebtn))
-		nbtn++;
-	if (WIDGET_MAPPED(win->unmapbtn))
-		nbtn++;
+    if (WIDGET_MAPPED(win->deletebtn))
+      nbtn++;
 
-	resize_title(win->title,
-	    MAX(1, WIDGET_WIDTH(win) - 2 * border_width - nbtn * button_size),
-	    button_size);
+    if (WIDGET_MAPPED(win->unmapbtn))
+      nbtn++;
+
+    resize_title(win->title,
+                 MAX(1, WIDGET_WIDTH(win) - 2 * border_width - nbtn * button_size),
+                 button_size);
+  }
 }
 
 void moveresize_window(struct window *win, int x, int y, int width, int height)
@@ -1304,9 +1408,11 @@ void unmanage_window(struct window *win, int clientquit)
 	XRemoveFromSaveSet(display, win->client);
 	sterr();
 
-	destroy_title(win->title);
-	destroy_button(win->deletebtn);
-	destroy_button(win->unmapbtn);
+  if (!win->undecorated) {
+    destroy_title(win->title);
+    destroy_button(win->deletebtn);
+    destroy_button(win->unmapbtn);
+  }
 
 	destroy_resizer(win->rsz_northwest);
 	destroy_resizer(win->rsz_north);
@@ -1342,9 +1448,11 @@ void unmanage_window(struct window *win, int clientquit)
 
 void repaint_window(struct window *win)
 {
-	REPAINT(win->title);
-	REPAINT(win->deletebtn);
-	REPAINT(win->unmapbtn);
+  if (!win->undecorated) {
+    REPAINT(win->title);
+    REPAINT(win->deletebtn);
+    REPAINT(win->unmapbtn);
+  }
 	REPAINT(win);
 }
 
@@ -1460,7 +1568,7 @@ int window_family_is_active(struct window *win)
 
 int windows_are_related(struct window *win1, struct window *win2)
 {
-	return win1 == win2
+  return win1 == win2
 	    || windows_are_group_related(win1, win2)
 	    || windows_are_transient_related(win1, win2);
 }
@@ -1492,9 +1600,9 @@ void set_active_window(struct window *win)
 
 	if (win != NULL) {
 		raise_window(win);
-		if (!window_group_is_active(win))
-			put_window_group_below(win);
-		restack_transient_windows(win);
+		/* if (!window_group_is_active(win)) */
+		/* 	put_window_group_below(win); */
+		/* restack_transient_windows(win); */
 	}
 
 	if (win == active)

@@ -27,7 +27,7 @@
 
 #include "lib.h"
 
-#define DEFAULT_FONT	"-*-source sans pro-bold-r-*-*-22-*-*-*-*-*-iso8859-1"
+#define DEFAULT_FONT	"lucidasans-14"
 
 extern Display *display;
 extern int screen;

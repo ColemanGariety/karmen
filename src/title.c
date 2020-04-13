@@ -94,7 +94,7 @@ static void repaint(struct widget *widget)
 
 	if (window_is_active(win)) {
 		int x, y;
-		int m = 1;
+		int m = 0;
 
 		x = (buf == NULL || strlen(buf) == 0) ?
 		    ypad : stringwidth(buf) + 2 * xpad;

@@ -49,7 +49,10 @@
 
 struct window *active = NULL;
 
+static Atom UTF8_STRING;
 static Atom WM_STATE;
+static Atom NET_WM_ICON_NAME;
+static Atom NET_WM_NAME;
 static Atom NET_WM_WINDOW_TYPE;
 static Atom NET_WM_WINDOW_TYPE_DOCK;
 
@@ -115,7 +118,10 @@ void window_init(void)
 	    CopyFromParent, CWOverrideRedirect, &attr);
 	movecurs = XCreateFontCursor(display, XC_fleur);
 
+	UTF8_STRING = XInternAtom(display, "UTF8_STRING", False);
 	WM_STATE = XInternAtom(display, "WM_STATE", False);
+	NET_WM_ICON_NAME = XInternAtom(display, "_NET_WM_ICON_NAME", False);
+	NET_WM_NAME = XInternAtom(display, "_NET_WM_NAME", False);
 	NET_WM_WINDOW_TYPE = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
 	NET_WM_WINDOW_TYPE_DOCK = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", False);
 	MOTIF_WM_HINTS = XInternAtom(display, "_MOTIF_WM_HINTS", False);
@@ -730,6 +736,38 @@ static void windowevent(struct widget *widget, XEvent *ep)
 	}
 }
 
+void *xmalloc(size_t size)
+{
+	void *p;
+	while ((p = malloc(size)) == NULL && size != 0) {
+		printf("out of memory");
+		sleep(1);
+	}
+	return p;
+}
+
+char *xstrdup(const char *s)
+{
+	size_t n = strlen(s) + 1;
+	return memcpy(xmalloc(n), s, n);
+}
+
+char *decodetextproperty(XTextProperty *p)
+{
+	char *s = NULL;
+	char **v = NULL;
+	int n = 0;
+	XmbTextPropertyToTextList(display, p, &v, &n);
+	if (n > 0)
+		s = xstrdup(v[0]);
+	if (v != NULL)
+		XFreeStringList(v);
+	return s;
+}
+
+
+
+
 void low_limit_size(int *width, int *height)
 {
 	*width = MAX(*width, 2 * border_width + 1);
@@ -1211,8 +1249,16 @@ void fetch_window_name(struct window *win)
 		win->name = NULL;
 	}
 	clerr();
-	XFetchName(display, win->client, &win->name);
-	sterr();
+  // NOTE: https://github.com/herbstluftwm/herbstluftwm/issues/64
+	/* XFetchName(display, win->client, &win->name); */
+  XTextProperty p;
+  if (XGetWMName(display, win->client, &p) != 0) {
+    win->name = decodetextproperty(&p);
+    if (p.value != NULL)
+      XFree(p.value);
+  }
+
+  sterr();
   if (!win->undecorated) {
     REPAINT(win->title);
   }
@@ -1238,10 +1284,23 @@ void fetch_icon_name(struct window *win)
 	}
 	sterr();
 
-	if (win->iconname == NULL || strlen(win->iconname) == 0)
-		name = "<< Anonymous >>";
-	else
-		name = win->iconname;
+	if (win->iconname == NULL || strlen(win->iconname) == 0) {
+    /* unsigned long n = 0; */
+    /* char *wmname = getprop(win->client, NET_WM_NAME, UTF8_STRING, 8, &n); */
+    /* if (wmname != NULL) { */
+    /*   name = wmname; */
+    /*   XFree(name); */
+    /* } */
+
+    XTextProperty p;
+    if (XGetWMName(display, win->client, &p) != 0) {
+      name = decodetextproperty(&p);
+      if (p.value != NULL)
+        XFree(p.value);
+    }
+  } else {
+    name = win->iconname;
+  }
 
 	if (win->menuitem == NULL)
 		win->menuitem = create_menuitem(winmenu, name,

@@ -90,6 +90,7 @@ typedef struct {
 
 static Atom MOTIF_WM_HINTS;
 
+#define MWM_DECOR_ALL (1L << 0)
 #define MWM_DECOR_TITLE (1L << 3)
 #define MWM_HINTS_DECORATIONS (1L << 1)
 
@@ -1017,21 +1018,33 @@ struct window *manage_window(Window client, int wmstart)
   }
 
   // NOTE: this breaks chrome !!!
+
+  /*
+   * We ignore all hints except the title decor hint. If the window
+   * doesn't want a title, we remove it's frame completely.
+   */
   
-  /* unsigned long o = 0; */
-  /* mwmhints *h = getprop(client, MOTIF_WM_HINTS, */
-  /*                       MOTIF_WM_HINTS, 32, &o); */
-  /* if (h != NULL & o != 5) { */
-  /*   XFree(h); */
-  /*   h = NULL; */
-  /* } */
-  /* if (h != NULL) { */
-  /*   if (h->flags & MWM_HINTS_DECORATIONS) { */
-	/* 		if ((h->decorations & MWM_DECOR_TITLE) == 0) */
-	/* 			win->undecorated = True; */
-	/* 	} */
-	/* 	XFree(h); */
-  /* } */
+  unsigned long o = 0;
+  mwmhints *h = getprop(client, MOTIF_WM_HINTS,
+                        MOTIF_WM_HINTS, 32, &o);
+  if (h != NULL & o != 5) {
+    XFree(h);
+    h = NULL;
+  }
+  if (h != NULL) {
+    if (h->flags & MWM_HINTS_DECORATIONS) {
+      /*
+       * If MWM_DECOR_ALL is set, it means use all
+       * decorations EXCEPT the ones specified...
+       */
+      if ((h->decorations & MWM_DECOR_ALL) != 0)
+        h->decorations = ~h->decorations;
+
+			if ((h->decorations & MWM_DECOR_TITLE) == 0)
+				win->undecorated = True;
+		}
+		XFree(h);
+  }
 
 	/*
 	 * Everything initialized. Time to get some work done.
@@ -1146,7 +1159,6 @@ struct window *manage_window(Window client, int wmstart)
   // NOTE: not the right way to do this
 
   if (win->undecorated) {
-    put_window_group_below(win);
     unmanage_window(win, 0);
   }
 
